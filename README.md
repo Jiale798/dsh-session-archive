@@ -1,3 +1,5 @@
+[中文](README.md) | [English](README.en.md)
+
 # 会话归档（session-archive）
 
 每个 DSH 会话自动获得一个**带序号的文件夹**；会话标题一变，文件夹跟着改名，序号保持不变。附带 Web 端胶囊和命令行工具。
