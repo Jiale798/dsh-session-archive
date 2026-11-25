@@ -120,6 +120,108 @@ function clip(text, max) {
   return `${value.slice(0, max)}…（共 ${value.length} 字，已截断）`
 }
 
+/** 状态条只有 24 个字符的预算，按候选顺序取第一个放得下的。 */
+function pickFit(candidates) {
+  for (const candidate of candidates) {
+    if ([...candidate].length <= 24) return candidate
+  }
+  return candidates[candidates.length - 1]
+}
+
+/** 字节数折成 12.3k / 1.7M 这种短写。 */
+function shortSize(bytes) {
+  const n = Number(bytes)
+  if (!Number.isFinite(n) || n <= 0) return '0'
+  if (n < 1024) return String(Math.round(n))
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)}k`
+  return `${(n / 1024 / 1024).toFixed(1)}M`
+}
+
+/** DSH Go 面板：静态结构，数字走 data 绑定。 */
+function archiveView(isZh) {
+  return {
+    v: 1,
+    type: 'stack',
+    title: isZh ? '会话归档' : 'Session archive',
+    children: [
+      {
+        type: 'row',
+        children: [
+          { type: 'metric', label: isZh ? '序号' : 'Seq', value: { $: 'data.seq' }, tone: 'info' },
+          { type: 'metric', label: isZh ? '事件' : 'Events', value: { $: 'data.events' } },
+        ],
+      },
+      {
+        type: 'row',
+        children: [
+          { type: 'metric', label: isZh ? '记录' : 'Transcript', value: { $: 'data.transcript' } },
+          { type: 'metric', label: isZh ? '事件日志' : 'Event log', value: { $: 'data.eventsSize' } },
+        ],
+      },
+      {
+        type: 'keyValue',
+        items: [
+          [isZh ? '状态' : 'State', { $: 'data.state' }],
+          [isZh ? '目录' : 'Folder', { $: 'data.folder' }],
+          [isZh ? '模型' : 'Model', { $: 'data.model' }],
+          [isZh ? '用量' : 'Usage', { $: 'data.usage' }],
+        ],
+      },
+      { type: 'list', items: { $: 'data.files' } },
+      {
+        type: 'text',
+        tone: 'muted',
+        text: isZh
+          ? '目录受手机系统限制无法直接打开，用「复制路径」把路径粘到文件管理器；transcript.md 可直接用阅读器看。'
+          : 'Mobile hosts cannot reveal a folder; use Copy path and paste it into a file manager. transcript.md opens in any reader.',
+      },
+      {
+        type: 'actions',
+        items: [
+          { label: isZh ? '复制路径' : 'Copy path', action: 'copyPath', icon: 'copy', style: 'primary' },
+          { label: isZh ? '打开路径' : 'Reveal', action: 'reveal', icon: 'folder-open' },
+          { label: isZh ? '刷新' : 'Refresh', action: 'reload', icon: 'refresh' },
+        ],
+      },
+    ],
+  }
+}
+
+/** 面板数据：把 describe() 的结果翻成视图绑定要的字符串。 */
+function archiveData(state, isZh) {
+  if (!state || state.ok !== true) {
+    return {
+      seq: '—',
+      events: '—',
+      transcript: '—',
+      eventsSize: '—',
+      state: isZh ? '未接管' : 'Not archived',
+      folder: '—',
+      model: '—',
+      usage: '—',
+      files: [],
+    }
+  }
+  const transcript = state.files.find((file) => file.name === 'transcript.md')
+  const eventBytes = state.files
+    .filter((file) => /^events(\.\d+)?\.jsonl$/.test(file.name))
+    .reduce((sum, file) => sum + (file.bytes || 0), 0)
+  const usage = state.usage
+  return {
+    seq: pad(state.seq),
+    events: String(state.eventCount ?? 0),
+    transcript: transcript ? shortSize(transcript.bytes) : '—',
+    eventsSize: shortSize(eventBytes),
+    state: state.live ? (isZh ? '记录中' : 'Recording') : (isZh ? '已停止' : 'Idle'),
+    folder: state.folder || '—',
+    model: state.route?.model || '—',
+    usage: usage
+      ? `${isZh ? '入' : 'in'} ${shortSize(usage.inputTokens)} / ${isZh ? '出' : 'out'} ${shortSize(usage.outputTokens)}`
+      : '—',
+    files: state.files.map((file) => ({ title: file.name, trailing: shortSize(file.bytes) })),
+  }
+}
+
 // ── 消息取文本 ──────────────────────────────────────────────────────────────
 
 /**
@@ -1057,6 +1159,84 @@ export function apply(ctx, config) {
   }
 
   if (typeof ctx.inject !== 'function') return
+
+  // ── DSH Go 原生界面：状态条 + 面板 ──────────────────────────────────────────
+  // 只有装了 dsh-go 桥接的主机会进这个回调；桌面端没有桥，整段 idle。
+  ctx.inject(['dshGo'], (goCtx) => {
+    const go = goCtx.dshGo
+    if (!go || typeof go.strip !== 'function') return
+    const zh = (caps) => !String(caps?.locale ?? '').toLowerCase().startsWith('en')
+
+    const stripText = (state, locale) => {
+      const isZh = zh({ locale })
+      if (!state.ok) return isZh ? '归档 未接管' : 'No archive'
+      const seq = pad(state.seq)
+      const count = state.eventCount
+      const size = state.files.reduce((sum, file) => sum + (file.bytes || 0), 0)
+      const short = shortSize(size)
+      return pickFit(isZh
+        ? [`${seq}·归档 ${count}条·${short}`, `${seq}·归档 ${short}`, `${seq}·归档`]
+        : [`${seq}·arc ${count}·${short}`, `${seq}·arc ${short}`, `${seq}·arc`])
+    }
+
+    go.strip('archive-strip', (scope, emit, caps) => {
+      const tick = () => {
+        let state
+        try {
+          state = describe(scope?.sessionId)
+        } catch (error) {
+          state = { ok: false, error: String(error?.message ?? error) }
+        }
+        emit({ text: stripText(state, caps?.locale), icon: 'archive' })
+      }
+      tick()
+      const timer = setInterval(tick, 3000)
+      timer.unref?.()
+      return () => clearInterval(timer)
+    })
+
+    if (typeof go.panel !== 'function') return
+    go.panel('archive', {
+      view: (_scope, caps) => archiveView(zh(caps)),
+      data: (scope, emit, caps) => {
+        const tick = () => {
+          let state
+          try {
+            state = describe(scope?.sessionId)
+          } catch (error) {
+            state = { ok: false, error: String(error?.message ?? error) }
+          }
+          emit(archiveData(state, zh(caps)))
+        }
+        tick()
+        const timer = setInterval(tick, 3000)
+        timer.unref?.()
+        return () => clearInterval(timer)
+      },
+      actions: {
+        copyPath: (scope) => {
+          const state = describe(scope?.sessionId)
+          if (!state.ok) return { toast: '没有归档目录' }
+          return { copy: state.dir, toast: '路径已复制' }
+        },
+        reveal: (scope) => {
+          const state = describe(scope?.sessionId)
+          if (!state.ok) return { toast: '没有归档目录' }
+          // 手机端没有文件管理器可开，直接复制路径让用户自己粘。
+          return { copy: state.dir, toast: '路径已复制，可粘贴到文件管理器' }
+        },
+        reload: (scope) => {
+          try {
+            go.refresh('archive', scope)
+          } catch {
+            // 老桥接没有 refresh：数据本来就在轮询。
+          }
+          return { toast: '已刷新' }
+        },
+      },
+    })
+  })
+
   ctx.inject(['webServer'], (webCtx) => {
     const server = webCtx.get('webServer')
     if (typeof server?.register !== 'function') return

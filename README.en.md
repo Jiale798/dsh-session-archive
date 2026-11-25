@@ -8,6 +8,8 @@ That `003 · 归档` pill under the message composer is this plugin: open it to 
 
 A DeepSeek Harness (DSH) plugin that gives **every session its own numbered folder**. The folder is created when the session starts, renamed in place whenever the session title changes, and the sequence number never changes.
 
+> The phone build (dsh-go) ships as a separate package: [`dsh-go-plugins/session-archive`](../dsh-go-plugins/session-archive), with a `dshGo` manifest, a native composer strip and a native panel. The archiving logic is the same code.
+
 ```
 会话归档/
 ├── .index.json                 # sessionId → { seq, folder, title, lastSeq }

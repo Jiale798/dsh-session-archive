@@ -1,8 +1,8 @@
 {
   "name": "@local/session-archive",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "private": true,
-  "description": "Gives every new DSH session its own numbered folder, renames it as the session title changes, and keeps a slim transcript plus a rotated event log inside. Ships a composer-dock pill and a CLI.",
+  "description": "Gives every new DSH session its own numbered folder, renames it as the session title changes, and keeps a slim transcript plus a rotated event log inside. Ships a composer-dock pill on the Web, a native strip and panel on DSH Go, and a CLI.",
   "type": "module",
   "main": "./index.js",
   "bin": {
@@ -24,11 +24,13 @@
     "docs",
     "tools",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "README.en.md"
   ],
   "keywords": [
     "dsh-plugin",
-    "dsh-bundle"
+    "dsh-bundle",
+    "dsh-go"
   ],
   "engines": {
     "node": ">=20.10",
@@ -43,6 +45,39 @@
       "immediately": true,
       "inject": [
         "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "dshGo": {
+    "v": 1,
+    "title": {
+      "zh": "会话归档",
+      "en": "Session archive"
+    },
+    "icon": "archive",
+    "contributes": {
+      "composer.strip": [
+        {
+          "id": "archive-strip",
+          "icon": "archive",
+          "panel": "archive"
+        }
+      ],
+      "panels": [
+        {
+          "id": "archive",
+          "title": {
+            "zh": "会话归档",
+            "en": "Session archive"
+          },
+          "icon": "archive",
+          "placement": [
+            "session.tab",
+            "features",
+            "chat.panel"
+          ],
+          "presentation": "sheet"
+        }
       ]
     }
   }
