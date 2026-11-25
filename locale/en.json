@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Session archive",
+    "description": "Gives each new session its own numbered folder that renames itself when the session title changes, keeps a readable transcript and a slim, rotated event log, adds a composer-dock pill, and ships a CLI for listing and searching the archive.",
+    "detail": "docs/DETAIL.md"
+  }
+}

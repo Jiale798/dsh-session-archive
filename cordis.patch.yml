@@ -1,0 +1,13 @@
+- insert:
+    - id: session-archive
+      name: '@local/session-archive'
+      config:
+        folderName: 会话归档
+        includeSubagents: false
+        keepEventLog: true
+        eventLogMode: slim
+        transcript: true
+        adoptExisting: false
+        maxEventLogBytes: 8388608
+        argsPreview: 240
+        resultPreview: 1200

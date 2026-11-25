@@ -1,0 +1,49 @@
+{
+  "name": "@local/session-archive",
+  "version": "1.2.0",
+  "private": true,
+  "description": "Gives every new DSH session its own numbered folder, renames it as the session title changes, and keeps a slim transcript plus a rotated event log inside. Ships a composer-dock pill and a CLI.",
+  "type": "module",
+  "main": "./index.js",
+  "bin": {
+    "session-archive": "./tools/archive-cli.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "tools",
+    "icon.svg",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "dsh-bundle"
+  ],
+  "engines": {
+    "node": ">=20.10",
+    "dsh": ">=0.2.1-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}
