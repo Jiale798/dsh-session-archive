@@ -2,6 +2,10 @@
 
 [中文](README.md) | English
 
+![The archive pill under the composer and its open panel](docs/screenshot.png)
+
+That `003 · 归档` pill under the message composer is this plugin: open it to see which folder the current session lands in, which files it holds and how large each one is, with **open folder / copy path / refresh** actions.
+
 A DeepSeek Harness (DSH) plugin that gives **every session its own numbered folder**. The folder is created when the session starts, renamed in place whenever the session title changes, and the sequence number never changes.
 
 ```

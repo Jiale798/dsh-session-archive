@@ -1,6 +1,6 @@
 {
   "name": "@local/session-archive",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Gives every new DSH session its own numbered folder, renames it as the session title changes, and keeps a slim transcript plus a rotated event log inside. Ships a composer-dock pill and a CLI.",
   "type": "module",
